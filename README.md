@@ -209,6 +209,131 @@ swag init -g main.go
 
 ---
 
+## 🐧 Ubuntu 22.04 源码部署指南
+
+### 1. 安装 Go 环境
+
+```bash
+# 下载 Go（以 1.24.2 为例，可根据需要调整版本）
+GO_VERSION="1.24.2"
+wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz
+
+# 解压到 /usr/local
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
+
+# 配置环境变量（添加到 ~/.bashrc）
+echo 'export GOROOT=/usr/local/go' >> ~/.bashrc
+echo 'export GOPATH=$HOME/go' >> ~/.bashrc
+echo 'export PATH=$PATH:$GOROOT/bin:$GOPATH/bin' >> ~/.bashrc
+source ~/.bashrc
+
+# 验证安装
+go version
+```
+
+### 2. 安装编译依赖
+
+项目使用了 CGO 调用 C 库（opus 音频编解码），需要安装以下依赖：
+
+```bash
+sudo apt update
+sudo apt install -y build-essential libopus-dev pkg-config
+```
+
+### 3. 克隆项目并配置
+
+```bash
+git clone https://github.com/AnimeAIChat/xiaozhi-server-go.git
+cd xiaozhi-server-go
+
+# 复制配置文件
+cp config.yaml .config.yaml
+
+# 编辑配置文件，修改关键配置
+nano .config.yaml
+```
+
+**必须修改的配置项：**
+
+```yaml
+web:
+  websocket: ws://你的服务器IP:8000    # ESP32设备连接的WebSocket地址
+  vision: http://你的服务器IP:8080/api/vision
+```
+
+### 4. 编译并运行
+
+```bash
+# 下载依赖
+go mod tidy
+
+# 方式一：直接运行（开发调试）
+CGO_ENABLED=1 go run ./src/main.go
+
+# 方式二：编译后运行（生产部署）
+CGO_ENABLED=1 go build -o server ./src/main.go
+./server
+```
+
+### 5. 配置防火墙（如需外网访问）
+
+```bash
+# 开放 WebSocket 端口 (8000) 和 Web 管理端口 (8080)
+sudo ufw allow 8000/tcp
+sudo ufw allow 8080/tcp
+sudo ufw reload
+```
+
+### 6. 使用 systemd 管理服务（可选）
+
+创建服务文件：
+
+```bash
+sudo nano /etc/systemd/system/xiaozhi.service
+```
+
+内容如下：
+
+```ini
+[Unit]
+Description=Xiaozhi AI Server
+After=network.target
+
+[Service]
+Type=simple
+User=你的用户名
+WorkingDirectory=/path/to/xiaozhi-server-go
+ExecStart=/path/to/xiaozhi-server-go/server
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+启用并启动服务：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable xiaozhi
+sudo systemctl start xiaozhi
+
+# 查看状态
+sudo systemctl status xiaozhi
+
+# 查看日志
+journalctl -u xiaozhi -f
+```
+
+### 7. 验证安装
+
+- 访问管理后台：`http://你的服务器IP:8080`
+- 默认管理员账号：`admin` / `123456`（请及时修改密码）
+- ESP32 设备 OTA 地址设置为：`http://你的服务器IP:8080/api/ota/`
+
+---
+
 ## Docker 环境部署
 
 1. 准备`docker-compose.yml`,`.config.yaml`,二进制程序文件
