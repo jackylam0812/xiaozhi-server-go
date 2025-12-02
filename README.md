@@ -244,7 +244,7 @@ sudo apt install -y build-essential libopus-dev pkg-config
 ### 3. 克隆项目并配置
 
 ```bash
-git clone https://github.com/AnimeAIChat/xiaozhi-server-go.git
+git clone https://github.com/jackylam0812/xiaozhi-server-go.git
 cd xiaozhi-server-go
 
 # 复制配置文件
